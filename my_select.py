@@ -9,6 +9,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
 def select_1():
     return (
         session.query(Student.name, func.avg(Grade.grade).label("avg_grade"))
@@ -95,6 +96,39 @@ def select_10(student_id: int, teacher_id: int):
     )
 
 
+def select_11(student_id: int, teacher_id: int):
+    return (
+        session.query(func.avg(Grade.grade))
+        .join(Subject)
+        .filter(Grade.student_id == student_id)
+        .filter(Subject.teacher_id == teacher_id)
+        .scalar()
+    )
+
+
+def select_12(group_id: int, subject_id: int):
+    subquery = (
+        session.query(func.max(Grade.date_received))
+        .join(Student, Grade.student_id == Student.id)
+        .filter(Student.group_id == group_id)
+        .filter(Grade.subject_id == subject_id)
+        .scalar_subquery()
+    )
+
+    return (
+        session.query(
+            Student.name,
+            Grade.grade,
+            Grade.date_received,
+        )
+        .join(Student, Grade.student_id == Student.id)
+        .filter(Student.group_id == group_id)
+        .filter(Grade.subject_id == subject_id)
+        .filter(Grade.date_received == subquery)
+        .all()
+    )
+
+
 if __name__ == "__main__":
     logger.info("Running SELECT 1 (Top 5 students)")
     for row in select_1():
@@ -129,6 +163,16 @@ if __name__ == "__main__":
         "Running SELECT 10 (Student courses by teacher student_id=1 teacher_id=1)"
     )
     logger.info(select_10(1, 1))
+
+    logger.info(
+        "Running SELECT 11 (Avg grades of particular student from particular teacher student_id=1 teacher_id=1)"
+    )
+    logger.info(select_11(1, 1))
+
+    logger.info(
+        "Running SELECT 12 (Grades of students from particular group and subject from the last lesson group_id=1 subject_id=1)"
+    )
+    logger.info(select_12(2, 2))
 
     session.close()
     logger.info("Done.")
